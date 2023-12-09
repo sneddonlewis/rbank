@@ -1,40 +1,45 @@
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 use std::io;
+use reqwest::Client;
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Rust Bank CLI client");
-    let mut is_running = true;
-
-    while is_running {
-        let menu_choice = read_until_success(
-            read_menu_command_from_stdin,
-            menu_options(),
-        );
-        is_running = match menu_choice {
-            MenuCommand::Exit => exit(),
-            MenuCommand::Login => login(),
-            MenuCommand::New => create_account(),
-        }
-    }
+    let menu_choice = read_until_success(
+        read_menu_command_from_stdin,
+        menu_options(),
+    );
+    match menu_choice {
+        MenuCommand::Exit => exit(),
+        MenuCommand::Login => login().await.unwrap(),
+        MenuCommand::New => create_account(),
+    };
 }
 
-fn exit() -> bool {
+fn exit() -> ! {
     println!("bye");
-    false
+    std::process::exit(0);
 }
 
-fn login() -> bool {
-    println!("login");
-    true
+async fn login() -> CommonResult<()>{
+    let client = reqwest::Client::new();
+    let uri = "localhost:3000/login";
+    let response = client
+        .get(uri)
+        .send()
+        .await?
+        .text()
+        .await?;
+    println!("{}", response);
+    Ok(())
 }
 
-fn create_account() -> bool {
+fn create_account() -> () {
     println!("new account");
-    true
 }
 
 
