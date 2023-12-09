@@ -29,7 +29,7 @@ impl<S> FromRequestParts<S> for AuthorizationMiddleware where S: Send + Sync {
                 eprintln!("Could not find the JWK layer, did you forget to add it?");
                 return Err(StatusCode::UNAUTHORIZED);
             };
-        // try moving to inside if let
+
         match check_auth(bearer, &jwks) {
             Ok(auth) => {
                 parts.extensions.insert(auth);
