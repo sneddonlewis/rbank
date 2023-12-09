@@ -27,7 +27,7 @@ fn exit() -> ! {
 
 async fn login() -> CommonResult<()>{
     let client = reqwest::Client::new();
-    let uri = "localhost:3000/login";
+    let uri = "http://localhost:3000/login";
     let response = client
         .get(uri)
         .send()
