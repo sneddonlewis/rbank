@@ -9,15 +9,17 @@ use strum_macros::EnumIter;
 #[tokio::main]
 async fn main() {
     println!("Rust Bank CLI client");
-    let menu_choice = read_until_success(
-        read_menu_command_from_stdin,
-        menu_options(),
-    );
-    match menu_choice {
-        MenuCommand::Exit => exit(),
-        MenuCommand::Login => login().await.unwrap(),
-        MenuCommand::New => create_account(),
-    };
+    loop {
+        let menu_choice = read_until_success(
+            read_menu_command_from_stdin,
+            menu_options(),
+        );
+        match menu_choice {
+            MenuCommand::Exit => exit(),
+            MenuCommand::Login => login().await.unwrap(),
+            MenuCommand::New => create_account().await.unwrap(),
+        };
+    }
 }
 
 fn exit() -> ! {
@@ -38,8 +40,17 @@ async fn login() -> CommonResult<()>{
     Ok(())
 }
 
-fn create_account() -> () {
-    println!("new account");
+async fn create_account() -> CommonResult<()> {
+    let client = reqwest::Client::new();
+    let uri = "http://localhost:3000/new";
+    let response = client
+        .get(uri)
+        .send()
+        .await?
+        .text()
+        .await?;
+    println!("{}", response);
+    Ok(())
 }
 
 
