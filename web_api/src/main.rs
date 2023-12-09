@@ -1,7 +1,7 @@
 use axum::{async_trait, Extension, Router};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::http::{Method, StatusCode};
+use axum::http::{HeaderMap, Method, Response, StatusCode};
 use axum::middleware::from_extractor;
 use axum::routing::get;
 use axum_extra::headers::Authorization;
@@ -17,10 +17,12 @@ use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() {
+    let jwks = Jwks(vec![get_jwk(KEY_PUB.as_bytes())]);
     let router = Router::new()
         .route("/login", get(login))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
-        .route("/new", get(create_account));
+        .route("/new", get(create_account))
+        .layer(Extension(jwks));
 
     let listener = TcpListener::bind("localhost:3000")
         .await
@@ -167,9 +169,13 @@ async fn login(Extension(claims): Extension<Authorized>) -> String {
     format!("{num}")
 }
 
-async fn create_account() -> &'static str {
+async fn create_account() -> Response<String> {
     let token = jwt_encode("4000001111111111", KEY_PRIV.as_bytes()).unwrap();
-    "New Account Route"
+    let mut response = Response::new("New Account Route".to_string());
+    let mut headers = HeaderMap::new();
+    headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
+    response.headers_mut().extend(headers);
+    response
 }
 
 const KEY_PUB: &str = r#"-----BEGIN PUBLIC KEY-----
