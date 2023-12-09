@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 use std::io;
-use reqwest::Client;
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -9,6 +9,7 @@ use strum_macros::EnumIter;
 #[tokio::main]
 async fn main() {
     println!("Rust Bank CLI client");
+    let token = create_account().await.unwrap();
     loop {
         let menu_choice = read_until_success(
             read_menu_command_from_stdin,
@@ -16,8 +17,11 @@ async fn main() {
         );
         match menu_choice {
             MenuCommand::Exit => exit(),
-            MenuCommand::Login => login().await.unwrap(),
-            MenuCommand::New => create_account().await.unwrap(),
+            MenuCommand::Login => login(token.as_str()).await.unwrap(),
+            MenuCommand::New => {
+                let token = create_account().await.unwrap();
+                println!("{}", token);
+            },
         };
     }
 }
@@ -27,11 +31,15 @@ fn exit() -> ! {
     std::process::exit(0);
 }
 
-async fn login() -> CommonResult<()>{
+async fn login(bearer_token: &str) -> CommonResult<()>{
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, HeaderValue::from_str(&bearer_token).unwrap());
+
     let client = reqwest::Client::new();
     let uri = "http://localhost:3000/login";
     let response = client
         .get(uri)
+        .headers(headers)
         .send()
         .await?
         .text()
@@ -40,17 +48,15 @@ async fn login() -> CommonResult<()>{
     Ok(())
 }
 
-async fn create_account() -> CommonResult<()> {
+async fn create_account() -> CommonResult<String> {
     let client = reqwest::Client::new();
     let uri = "http://localhost:3000/new";
     let response = client
         .get(uri)
         .send()
-        .await?
-        .text()
         .await?;
-    println!("{}", response);
-    Ok(())
+    let token = response.headers().get(AUTHORIZATION).unwrap().to_str().unwrap().to_string();
+    Ok(token)
 }
 
 
