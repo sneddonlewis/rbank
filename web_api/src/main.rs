@@ -7,8 +7,8 @@ use axum::routing::get;
 use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::TypedHeader;
-use chrono::{serde::ts_seconds, DateTime, Utc};
-use jsonwebtoken::{Algorithm, DecodingKey, Validation};
+use chrono::{serde::ts_seconds, DateTime, Utc, Duration};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
@@ -28,6 +28,8 @@ async fn main() {
         .await
         .unwrap();
 }
+
+const KID: &str = "quack";
 
 struct AuthorizationMiddleware;
 
@@ -105,6 +107,25 @@ fn jwt_decode(token: &str, jwk: &Jwk) -> Result<Claims, String> {
     ).unwrap();
 
     Ok(decoded.claims)
+}
+
+fn jwt_encode(acc: &str, private_key: &[u8]) -> Result<String, ()> {
+    let exp = Utc::now() + Duration::weeks(52);
+    let claims = Claims {
+        card_num: acc.to_string(),
+        exp,
+    };
+
+    let mut header = jsonwebtoken::Header::new(ALGORITHM);
+    header.kid = Some(KID.to_string());
+
+    let encoding_key = &EncodingKey::from_rsa_pem(private_key).unwrap();
+    let token = jsonwebtoken::encode(
+        &header,
+        &claims,
+        encoding_key,
+    ).unwrap();
+    Ok(token)
 }
 
 fn check_auth(bearer: Bearer, jwks: &Jwks) -> Result<Authorized, String> {
