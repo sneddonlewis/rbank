@@ -7,12 +7,36 @@ use strum_macros::EnumIter;
 
 fn main() {
     println!("Rust Bank CLI client");
-    let menu_choice = read_until_success(
-        read_menu_command_from_stdin,
-        menu_options(),
-    );
-    println!("{}", menu_choice);
+    let mut is_running = true;
+
+    while is_running {
+        let menu_choice = read_until_success(
+            read_menu_command_from_stdin,
+            menu_options(),
+        );
+        is_running = match menu_choice {
+            MenuCommand::Exit => exit(),
+            MenuCommand::Login => login(),
+            MenuCommand::New => create_account(),
+        }
+    }
 }
+
+fn exit() -> bool {
+    println!("bye");
+    false
+}
+
+fn login() -> bool {
+    println!("login");
+    true
+}
+
+fn create_account() -> bool {
+    println!("new account");
+    true
+}
+
 
 type CommonError = Box<dyn std::error::Error>;
 type CommonResult<T> = Result<T, CommonError>;
