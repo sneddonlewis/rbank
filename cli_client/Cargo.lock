@@ -88,6 +88,7 @@ name = "cli_client"
 version = "0.1.0"
 dependencies = [
  "reqwest",
+ "serde",
  "strum",
  "strum_macros",
  "tokio",

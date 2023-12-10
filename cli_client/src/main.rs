@@ -1,10 +1,13 @@
+mod models;
+
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 use std::io;
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
+use reqwest::header::{AUTHORIZATION};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+use crate::models::AccountAuthView;
 
 #[tokio::main]
 async fn main() {
@@ -16,11 +19,16 @@ async fn main() {
             menu_options(),
         );
         match menu_choice {
-            MenuCommand::Exit => exit(),
-            MenuCommand::Login => login(token.as_str()).await.unwrap(),
-            MenuCommand::New => {
-                let token = create_account().await.unwrap();
+            MenuCommand::Exit => {
+                exit();
+            },
+            MenuCommand::Login => {
+                let token = login().await.unwrap();
                 println!("{}", token);
+            },
+            MenuCommand::New => {
+                let account = create_account().await.unwrap();
+                println!("{:?}", account);
             },
         };
     }
@@ -31,32 +39,49 @@ fn exit() -> ! {
     std::process::exit(0);
 }
 
-async fn login(bearer_token: &str) -> CommonResult<()>{
-    let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&bearer_token).unwrap());
+async fn login() -> CommonResult<String>{
+    // param: bearer_token: &str
+    // let mut headers = HeaderMap::new();
+    // headers.insert(AUTHORIZATION, HeaderValue::from_str(&bearer_token).unwrap());
+    //
+    // let client = reqwest::Client::new();
+    // let uri = "http://localhost:3000/login";
+    // let response = client
+    //     .get(uri)
+    //     .headers(headers)
+    //     .send()
+    //     .await?
+    //     .text()
+    //     .await?;
+    // println!("{}", response);
+    // Ok(())
+
+    let auth_request = AccountAuthView{
+        card_number: "4000001111111111".to_string(),
+        pin: "1111".to_string(),
+    };
 
     let client = reqwest::Client::new();
     let uri = "http://localhost:3000/login";
     let response = client
-        .get(uri)
-        .headers(headers)
+        .post(uri)
+        .json(&auth_request)
         .send()
-        .await?
-        .text()
         .await?;
-    println!("{}", response);
-    Ok(())
+    let token = response.headers().get(AUTHORIZATION).unwrap().to_str().unwrap().to_string();
+    Ok(token)
 }
 
-async fn create_account() -> CommonResult<String> {
+async fn create_account() -> CommonResult<AccountAuthView> {
     let client = reqwest::Client::new();
     let uri = "http://localhost:3000/new";
     let response = client
         .get(uri)
         .send()
         .await?;
-    let token = response.headers().get(AUTHORIZATION).unwrap().to_str().unwrap().to_string();
-    Ok(token)
+
+    let account: AccountAuthView = response.json().await?;
+    Ok(account)
 }
 
 
