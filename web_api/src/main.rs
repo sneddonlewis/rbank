@@ -6,7 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::{Extension, Json, Router};
 use axum::extract::{FromRequestParts, State};
-use axum::http::{HeaderMap, HeaderValue, Request, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::{IntoResponse};
 use axum::routing::{get, post};
@@ -78,17 +78,29 @@ async fn account(Extension(claims): Extension<auth::Authorized>) -> impl IntoRes
     }
 }
 
-async fn login(Json(request): Json<AccountAuthView>)-> impl IntoResponse {
-    // todo validate card number and pin
-    let token = encode_token(request.card_number.to_string());
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        axum::http::header::AUTHORIZATION,
-        HeaderValue::try_from(token).unwrap()
-    );
-    (
-        headers,
-    )
+async fn login(
+    State(account_repo): State<DynAccountRepo>,
+    Json(request): Json<AccountAuthView>,
+)-> impl IntoResponse {
+    let acc = account_repo.find(request.card_number.clone())
+        .await
+        .unwrap();
+
+    if acc.pin == request.pin {
+        let token = encode_token(request.card_number.clone());
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::try_from(token).unwrap()
+        );
+        (
+            headers,
+        ).into_response()
+    } else {
+        (
+            StatusCode::UNAUTHORIZED
+        ).into_response()
+    }
 }
 
 async fn create_account(State(account_repo): State<DynAccountRepo>) -> impl IntoResponse {
