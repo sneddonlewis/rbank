@@ -18,10 +18,10 @@ pub struct AccountRepoImpl;
 #[async_trait]
 impl AccountRepo for AccountRepoImpl {
     async fn find(&self, card_num: String) -> Result<Account, AccountRepoError> {
-        Ok(Account::new(card_num, "1111".to_string()))
+        Ok(Account::new(card_num, "1111".to_string(), 0.0))
     }
 
     async fn create(&self) -> Result<Account, AccountRepoError> {
-        Ok(Account::new("4000001111111111".to_string(), "1111".to_string()))
+        Ok(Account::new("4000001111111111".to_string(), "1111".to_string(), 0.0))
     }
 }
