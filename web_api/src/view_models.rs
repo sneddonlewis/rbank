@@ -7,10 +7,17 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new() -> Account {
+    // pub fn new() -> Account {
+    //     Account {
+    //         card_number: "4000001111111111".to_string(),
+    //         pin: "1111".to_string(),
+    //         balance: 0.0
+    //     }
+    // }
+    pub fn new(card_number: String, pin: String) -> Account {
         Account {
-            card_number: "4000001111111111".to_string(),
-            pin: "1111".to_string(),
+            card_number,
+            pin,
             balance: 0.0
         }
     }

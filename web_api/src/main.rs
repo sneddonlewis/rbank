@@ -5,13 +5,11 @@ mod view_models;
 use std::sync::Arc;
 use async_trait::async_trait;
 use axum::{Extension, Json, Router};
-use axum::extract::{FromRequestParts, State};
+use axum::extract::{State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::{IntoResponse};
 use axum::routing::{get, post};
-use base64::Engine;
-use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use crate::auth::{encode_token, get_public_jwk, Jwks};
 
@@ -58,16 +56,21 @@ struct AccountRepoImpl;
 #[async_trait]
 impl AccountRepo for AccountRepoImpl {
     async fn find(&self, card_num: String) -> Result<Account, AccountRepoError> {
-        Ok(Account::new())
+        Ok(Account::new(card_num, "1111".to_string()))
     }
 
     async fn create(&self) -> Result<Account, AccountRepoError> {
-        Ok(Account::new())
+        Ok(Account::new("4000001111111111".to_string(), "1111".to_string()))
     }
 }
 
-async fn account(Extension(claims): Extension<auth::Authorized>) -> impl IntoResponse {
-    let acc = Account::new();
+async fn account(
+    Extension(claims): Extension<auth::Authorized>,
+    State(account_repo): State<DynAccountRepo>,
+) -> impl IntoResponse {
+    let acc = account_repo.create()
+        .await
+        .unwrap();
     let num = claims.0.card_num;
     if acc.card_number == num {
         Json(AccountDetailView::from(acc)).into_response()
