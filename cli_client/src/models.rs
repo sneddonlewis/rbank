@@ -40,7 +40,7 @@ pub struct AccountAuthView {
     pub pin: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccountDetailView {
     pub card_number: String,
     pub balance: f64,

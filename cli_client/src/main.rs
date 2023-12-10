@@ -7,7 +7,7 @@ use reqwest::header::{AUTHORIZATION};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-use crate::models::AccountAuthView;
+use crate::models::{AccountAuthView, AccountDetailView};
 
 #[tokio::main]
 async fn main() {
@@ -24,7 +24,8 @@ async fn main() {
             },
             MenuCommand::Login => {
                 let token = login().await.unwrap();
-                println!("{}", token);
+                let account = show_account(token).await.unwrap();
+                println!("{:?}", account);
             },
             MenuCommand::New => {
                 let account = create_account().await.unwrap();
@@ -39,23 +40,20 @@ fn exit() -> ! {
     std::process::exit(0);
 }
 
-async fn login() -> CommonResult<String>{
-    // param: bearer_token: &str
-    // let mut headers = HeaderMap::new();
-    // headers.insert(AUTHORIZATION, HeaderValue::from_str(&bearer_token).unwrap());
-    //
-    // let client = reqwest::Client::new();
-    // let uri = "http://localhost:3000/login";
-    // let response = client
-    //     .get(uri)
-    //     .headers(headers)
-    //     .send()
-    //     .await?
-    //     .text()
-    //     .await?;
-    // println!("{}", response);
-    // Ok(())
+async fn show_account(bearer_token: String) -> CommonResult<AccountDetailView> {
+    let client = reqwest::Client::new();
+    let uri = "http://localhost:3000/account";
+    let response = client
+        .get(uri)
+        .header(AUTHORIZATION, format!("Bearer {}", bearer_token))
+        .send()
+        .await?;
 
+    let account: AccountDetailView = response.json().await?;
+    Ok(account)
+}
+
+async fn login() -> CommonResult<String>{
     let auth_request = AccountAuthView{
         card_number: "4000001111111111".to_string(),
         pin: "1111".to_string(),
