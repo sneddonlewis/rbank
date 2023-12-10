@@ -1,4 +1,6 @@
 mod models;
+mod client;
+mod error;
 
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
@@ -7,12 +9,14 @@ use reqwest::header::{AUTHORIZATION};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+use crate::client::ApiClient;
 use crate::models::{AccountAuthView, AccountDetailView};
+use crate::error::{CommonResult, CommonError};
 
 #[tokio::main]
 async fn main() {
     println!("Rust Bank CLI client");
-    let token = create_account().await.unwrap();
+    let api_client = ApiClient::new();
     loop {
         let menu_choice = read_until_success(
             read_menu_command_from_stdin,
@@ -23,12 +27,12 @@ async fn main() {
                 exit();
             },
             MenuCommand::Login => {
-                let token = login().await.unwrap();
-                let account = show_account(token).await.unwrap();
+                let token = login(&api_client).await.unwrap();
+                let account = show_account(&api_client, token).await.unwrap();
                 println!("{:?}", account);
             },
             MenuCommand::New => {
-                let account = create_account().await.unwrap();
+                let account = create_account(&api_client).await.unwrap();
                 println!("{:?}", account);
             },
         };
@@ -40,51 +44,29 @@ fn exit() -> ! {
     std::process::exit(0);
 }
 
-async fn show_account(bearer_token: String) -> CommonResult<AccountDetailView> {
-    let client = reqwest::Client::new();
-    let uri = "http://localhost:3000/account";
-    let response = client
-        .get(uri)
-        .header(AUTHORIZATION, format!("Bearer {}", bearer_token))
-        .send()
+async fn show_account(client: &ApiClient, bearer_token: String) -> CommonResult<AccountDetailView> {
+    let acc = client.account_detail(bearer_token)
         .await?;
-
-    let account: AccountDetailView = response.json().await?;
-    Ok(account)
+    Ok(acc)
 }
 
-async fn login() -> CommonResult<String>{
+async fn login(client: &ApiClient) -> CommonResult<String>{
     let auth_request = AccountAuthView{
         card_number: "4000001111111111".to_string(),
         pin: "1111".to_string(),
     };
 
-    let client = reqwest::Client::new();
-    let uri = "http://localhost:3000/login";
-    let response = client
-        .post(uri)
-        .json(&auth_request)
-        .send()
+    let token = client.login(&auth_request)
         .await?;
-    let token = response.headers().get(AUTHORIZATION).unwrap().to_str().unwrap().to_string();
     Ok(token)
 }
 
-async fn create_account() -> CommonResult<AccountAuthView> {
-    let client = reqwest::Client::new();
-    let uri = "http://localhost:3000/new";
-    let response = client
-        .get(uri)
-        .send()
-        .await?;
-
-    let account: AccountAuthView = response.json().await?;
+async fn create_account(client: &ApiClient) -> CommonResult<AccountAuthView> {
+    let account = client.create().await?;
     Ok(account)
 }
 
 
-type CommonError = Box<dyn std::error::Error>;
-type CommonResult<T> = Result<T, CommonError>;
 
 fn menu_options() -> String {
     MenuCommand::iter()
