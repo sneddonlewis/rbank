@@ -51,7 +51,7 @@ pub fn jwt_decode(token: &str, jwk: &Jwk) -> Result<Claims, String> {
 }
 
 pub fn encode_token(account_number: String) -> String {
-    jwt_encode("4000001111111111", crate::auth::KEY_PRIV.as_bytes()).unwrap()
+    jwt_encode(account_number.as_str(), crate::auth::KEY_PRIV.as_bytes()).unwrap()
 }
 
 fn jwt_encode(acc: &str, private_key: &[u8]) -> Result<String, ()> {

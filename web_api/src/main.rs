@@ -4,17 +4,17 @@ mod view_models;
 
 use axum::{Extension, Json, Router};
 use axum::extract::FromRequestParts;
-use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, Request, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::{IntoResponse};
-use axum::routing::get;
+use axum::routing::{get, post};
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use crate::auth::{encode_token, get_public_jwk, Jwks};
 
 use crate::middleware::AuthorizationMiddleware;
-use crate::view_models::AccountView;
+use crate::view_models::{Account, AccountAuthView, AccountDetailView};
 
 #[tokio::main]
 async fn main() {
@@ -23,7 +23,7 @@ async fn main() {
         .route("/account", get(account))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
         .route("/new", get(create_account))
-        .route("/login", get(login))
+        .route("/login", post(login))
         .layer(Extension(jwks));
 
     let listener = TcpListener::bind("localhost:3000")
@@ -37,10 +37,10 @@ async fn main() {
 }
 
 async fn account(Extension(claims): Extension<auth::Authorized>) -> impl IntoResponse {
-    let acc = AccountView::new();
+    let acc = Account::new();
     let num = claims.0.card_num;
     if acc.card_number == num {
-        Json(acc).into_response()
+        Json(AccountDetailView::from(acc)).into_response()
     } else {
         (
             StatusCode::UNAUTHORIZED
@@ -48,9 +48,9 @@ async fn account(Extension(claims): Extension<auth::Authorized>) -> impl IntoRes
     }
 }
 
-async fn login() -> impl IntoResponse {
-    let acc = AccountView::new();
-    let token = encode_token(acc.card_number.to_string());
+async fn login(Json(request): Json<AccountAuthView>)-> impl IntoResponse {
+    // todo validate card number and pin
+    let token = encode_token(request.card_number.to_string());
     let mut headers = HeaderMap::new();
     headers.insert(
         axum::http::header::AUTHORIZATION,
@@ -62,6 +62,7 @@ async fn login() -> impl IntoResponse {
 }
 
 async fn create_account() -> impl IntoResponse {
-    let acc = AccountView::new();
-    Json(acc)
+    let acc= Account::new();
+    let view: AccountAuthView = AccountAuthView::from(acc);
+    Json(view)
 }
