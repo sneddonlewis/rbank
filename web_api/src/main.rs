@@ -2,8 +2,10 @@ mod middleware;
 mod auth;
 mod view_models;
 
+use std::sync::Arc;
+use async_trait::async_trait;
 use axum::{Extension, Json, Router};
-use axum::extract::FromRequestParts;
+use axum::extract::{FromRequestParts, State};
 use axum::http::{HeaderMap, HeaderValue, Request, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::{IntoResponse};
@@ -18,13 +20,17 @@ use crate::view_models::{Account, AccountAuthView, AccountDetailView};
 
 #[tokio::main]
 async fn main() {
+    let account_repo = Arc::new(AccountRepoImpl) as DynAccountRepo;
+
     let jwks = Jwks(vec![get_public_jwk()]);
+
     let router = Router::new()
         .route("/account", get(account))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
         .route("/new", get(create_account))
         .route("/login", post(login))
-        .layer(Extension(jwks));
+        .layer(Extension(jwks))
+        .with_state(account_repo);
 
     let listener = TcpListener::bind("localhost:3000")
         .await
@@ -34,6 +40,30 @@ async fn main() {
     axum::serve(listener, router)
         .await
         .unwrap();
+}
+
+type DynAccountRepo = Arc<dyn AccountRepo + Send + Sync>;
+
+type AccountRepoError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+#[async_trait]
+trait AccountRepo {
+    async fn find(&self, card_num: String) -> Result<Account, AccountRepoError>;
+
+    async fn create(&self) -> Result<Account, AccountRepoError>;
+}
+
+struct AccountRepoImpl;
+
+#[async_trait]
+impl AccountRepo for AccountRepoImpl {
+    async fn find(&self, card_num: String) -> Result<Account, AccountRepoError> {
+        Ok(Account::new())
+    }
+
+    async fn create(&self) -> Result<Account, AccountRepoError> {
+        Ok(Account::new())
+    }
 }
 
 async fn account(Extension(claims): Extension<auth::Authorized>) -> impl IntoResponse {
@@ -61,8 +91,10 @@ async fn login(Json(request): Json<AccountAuthView>)-> impl IntoResponse {
     )
 }
 
-async fn create_account() -> impl IntoResponse {
-    let acc= Account::new();
+async fn create_account(State(account_repo): State<DynAccountRepo>) -> impl IntoResponse {
+    let acc= account_repo.create()
+        .await
+        .unwrap();
     let view: AccountAuthView = AccountAuthView::from(acc);
     Json(view)
 }
