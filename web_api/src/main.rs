@@ -1,9 +1,9 @@
 mod middleware;
 mod auth;
 mod view_models;
+mod account_repo;
 
 use std::sync::Arc;
-use async_trait::async_trait;
 use axum::{Extension, Json, Router};
 use axum::extract::{State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
@@ -11,10 +11,11 @@ use axum::middleware::from_extractor;
 use axum::response::{IntoResponse};
 use axum::routing::{get, post};
 use tokio::net::TcpListener;
+use crate::account_repo::{AccountRepoImpl, DynAccountRepo};
 use crate::auth::{encode_token, get_public_jwk, Jwks};
 
 use crate::middleware::AuthorizationMiddleware;
-use crate::view_models::{Account, AccountAuthView, AccountDetailView};
+use crate::view_models::{AccountAuthView, AccountDetailView};
 
 #[tokio::main]
 async fn main() {
@@ -40,29 +41,6 @@ async fn main() {
         .unwrap();
 }
 
-type DynAccountRepo = Arc<dyn AccountRepo + Send + Sync>;
-
-type AccountRepoError = Box<dyn std::error::Error + Send + Sync + 'static>;
-
-#[async_trait]
-trait AccountRepo {
-    async fn find(&self, card_num: String) -> Result<Account, AccountRepoError>;
-
-    async fn create(&self) -> Result<Account, AccountRepoError>;
-}
-
-struct AccountRepoImpl;
-
-#[async_trait]
-impl AccountRepo for AccountRepoImpl {
-    async fn find(&self, card_num: String) -> Result<Account, AccountRepoError> {
-        Ok(Account::new(card_num, "1111".to_string()))
-    }
-
-    async fn create(&self) -> Result<Account, AccountRepoError> {
-        Ok(Account::new("4000001111111111".to_string(), "1111".to_string()))
-    }
-}
 
 async fn account(
     Extension(claims): Extension<auth::Authorized>,
